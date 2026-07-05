@@ -40,8 +40,25 @@ public struct UsageConfig: Codable, Equatable, Sendable {
     public var refreshIntervalSeconds: Double
     public var warningRemainingPercent: Double
     public var criticalRemainingPercent: Double
+    public var enableOfficialRateLimitSnapshots: Bool
+    public var maxRateLimitSnapshotAgeMinutes: Double
+    public var rateLimitDisplayWindow: RateLimitWindow
     public var customStateDatabasePaths: [String]
     public var includeArchivedSessionsFallback: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case codexHome
+        case tokenBudget
+        case period
+        case refreshIntervalSeconds
+        case warningRemainingPercent
+        case criticalRemainingPercent
+        case enableOfficialRateLimitSnapshots
+        case maxRateLimitSnapshotAgeMinutes
+        case rateLimitDisplayWindow
+        case customStateDatabasePaths
+        case includeArchivedSessionsFallback
+    }
 
     public init(
         codexHome: String = "~/.codex",
@@ -50,6 +67,9 @@ public struct UsageConfig: Codable, Equatable, Sendable {
         refreshIntervalSeconds: Double = 60,
         warningRemainingPercent: Double = 25,
         criticalRemainingPercent: Double = 10,
+        enableOfficialRateLimitSnapshots: Bool = true,
+        maxRateLimitSnapshotAgeMinutes: Double = 360,
+        rateLimitDisplayWindow: RateLimitWindow = .mostConstrained,
         customStateDatabasePaths: [String] = [],
         includeArchivedSessionsFallback: Bool = false
     ) {
@@ -59,8 +79,28 @@ public struct UsageConfig: Codable, Equatable, Sendable {
         self.refreshIntervalSeconds = refreshIntervalSeconds
         self.warningRemainingPercent = warningRemainingPercent
         self.criticalRemainingPercent = criticalRemainingPercent
+        self.enableOfficialRateLimitSnapshots = enableOfficialRateLimitSnapshots
+        self.maxRateLimitSnapshotAgeMinutes = maxRateLimitSnapshotAgeMinutes
+        self.rateLimitDisplayWindow = rateLimitDisplayWindow
         self.customStateDatabasePaths = customStateDatabasePaths
         self.includeArchivedSessionsFallback = includeArchivedSessionsFallback
+    }
+
+    public init(from decoder: Decoder) throws {
+        let defaults = UsageConfig()
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        codexHome = try container.decodeIfPresent(String.self, forKey: .codexHome) ?? defaults.codexHome
+        tokenBudget = try container.decodeIfPresent(Int.self, forKey: .tokenBudget) ?? defaults.tokenBudget
+        period = try container.decodeIfPresent(BudgetPeriod.self, forKey: .period) ?? defaults.period
+        refreshIntervalSeconds = try container.decodeIfPresent(Double.self, forKey: .refreshIntervalSeconds) ?? defaults.refreshIntervalSeconds
+        warningRemainingPercent = try container.decodeIfPresent(Double.self, forKey: .warningRemainingPercent) ?? defaults.warningRemainingPercent
+        criticalRemainingPercent = try container.decodeIfPresent(Double.self, forKey: .criticalRemainingPercent) ?? defaults.criticalRemainingPercent
+        enableOfficialRateLimitSnapshots = try container.decodeIfPresent(Bool.self, forKey: .enableOfficialRateLimitSnapshots) ?? defaults.enableOfficialRateLimitSnapshots
+        maxRateLimitSnapshotAgeMinutes = try container.decodeIfPresent(Double.self, forKey: .maxRateLimitSnapshotAgeMinutes) ?? defaults.maxRateLimitSnapshotAgeMinutes
+        rateLimitDisplayWindow = try container.decodeIfPresent(RateLimitWindow.self, forKey: .rateLimitDisplayWindow) ?? defaults.rateLimitDisplayWindow
+        customStateDatabasePaths = try container.decodeIfPresent([String].self, forKey: .customStateDatabasePaths) ?? defaults.customStateDatabasePaths
+        includeArchivedSessionsFallback = try container.decodeIfPresent(Bool.self, forKey: .includeArchivedSessionsFallback) ?? defaults.includeArchivedSessionsFallback
     }
 }
 
@@ -82,7 +122,11 @@ public enum ConfigStore {
         }
 
         let data = try Data(contentsOf: url)
-        return try JSONDecoder().decode(UsageConfig.self, from: data)
+        let config = try JSONDecoder().decode(UsageConfig.self, from: data)
+        if createIfMissing {
+            try? save(config, to: url)
+        }
+        return config
     }
 
     public static func save(_ config: UsageConfig, to url: URL = defaultConfigURL) throws {

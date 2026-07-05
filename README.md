@@ -1,15 +1,15 @@
 # Codex Usage Bar
 
-Codex Usage Bar is a small macOS menu bar app that shows an estimated local Codex token budget remaining percentage.
+Codex Usage Bar is a small macOS menu bar app that shows Codex remaining rate-limit percentage as a battery icon.
 
 It is intentionally local-first:
 
-- reads Codex local state from `~/.codex/state_*.sqlite`
-- falls back to scanning local session JSONL files when SQLite state is unavailable
+- reads the latest official Codex `rate_limits` snapshot written by logged-in Codex sessions
+- falls back to local token estimation from `~/.codex/state_*.sqlite` when no recent rate-limit snapshot exists
 - never sends usage data anywhere
-- lets you set your own daily, weekly, monthly, or rolling 24h token budget
+- does not read or upload `~/.codex/auth.json`
 
-OpenAI does not currently expose a public real-time "Codex remaining quota" API for personal accounts, so this app reports a practical local estimate rather than an official entitlement number.
+Codex itself exposes rate limits in `/status` and `/usage`. This app uses the same local session data Codex writes after authenticated requests, so a normal Codex login is enough.
 
 ## Install
 
@@ -20,7 +20,7 @@ cd codex-usage-bar
 open "dist/Codex Usage Bar.app"
 ```
 
-The app appears as a menu bar item such as `Codex 72%`.
+The app appears as an Apple-style battery with the percentage inside the battery.
 
 ## Configure
 
@@ -37,15 +37,24 @@ Example:
   "codexHome" : "~/.codex",
   "criticalRemainingPercent" : 10,
   "customStateDatabasePaths" : [],
+  "enableOfficialRateLimitSnapshots" : true,
   "includeArchivedSessionsFallback" : false,
+  "maxRateLimitSnapshotAgeMinutes" : 360,
   "period" : "monthly",
+  "rateLimitDisplayWindow" : "mostConstrained",
   "refreshIntervalSeconds" : 60,
   "tokenBudget" : 300000000,
   "warningRemainingPercent" : 25
 }
 ```
 
-The default `tokenBudget` is only a practical placeholder. Set it to the amount you want to treat as 100% for the selected period. For example, if you want to watch a monthly 2,000,000-token allowance:
+When `enableOfficialRateLimitSnapshots` is true, the menu bar uses official Codex `rate_limits` first:
+
+- `primary` is the shorter rate-limit window
+- `secondary` is the longer rate-limit window
+- `mostConstrained` shows whichever window has less remaining percentage
+
+The `tokenBudget` setting is only used by the fallback local token estimator. Set it to the amount you want to treat as 100% for the selected period. For example, if you want to watch a monthly 2,000,000-token fallback allowance:
 
 ```json
 "period" : "monthly",
@@ -80,7 +89,7 @@ swift run CodexUsageBar --once --budget 2000000 --period monthly
 
 ## Privacy
 
-The app reads only local files under your configured Codex home. It queries token totals from the local SQLite state database and does not read prompts, messages, or `~/.codex/auth.json`.
+The app reads local files under your configured Codex home. It only parses session lines that contain `rate_limits`, queries token totals from the local SQLite state database when needed, and never uploads any of that data. It does not read `~/.codex/auth.json`.
 
 ## Development
 
@@ -92,6 +101,6 @@ swift build
 
 ## Limitations
 
-- This is not an official OpenAI quota meter.
-- ChatGPT/Codex rate limits may not map exactly to local token totals.
+- Rate-limit snapshots update when Codex writes new session events.
+- The fallback local token estimate is not an official OpenAI quota meter.
 - If Codex changes its local storage format, the app may need a parser update.

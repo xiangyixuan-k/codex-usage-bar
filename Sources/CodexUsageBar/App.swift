@@ -40,7 +40,9 @@ struct CodexUsageBarApp: App {
         MenuBarExtra {
             MenuContent(viewModel: viewModel)
         } label: {
-            Label(viewModel.title, systemImage: viewModel.symbolName)
+            Image(nsImage: viewModel.batteryImage)
+                .renderingMode(.original)
+                .accessibilityLabel("Codex remaining \(viewModel.title)")
         }
         .menuBarExtraStyle(.menu)
     }
@@ -48,8 +50,8 @@ struct CodexUsageBarApp: App {
 
 @MainActor
 final class UsageViewModel: ObservableObject {
-    @Published var title = "Codex --"
-    @Published var symbolName = "gauge.with.dots.needle.bottom.50percent"
+    @Published var title = "--%"
+    @Published var batteryImage = BatteryIconRenderer.image(percent: nil, health: .unknown)
     @Published var snapshot = UsageSnapshot(
         usedTokens: 0,
         tokenBudget: 0,
@@ -78,10 +80,11 @@ final class UsageViewModel: ObservableObject {
         config = launchOptions.loadConfig(createIfMissing: true)
         snapshot = UsageReader.snapshot(config: config)
         title = snapshot.menuBarTitle()
-        symbolName = symbol(for: snapshot.health(
+        let health = snapshot.health(
             warningRemainingPercent: config.warningRemainingPercent,
             criticalRemainingPercent: config.criticalRemainingPercent
-        ))
+        )
+        batteryImage = BatteryIconRenderer.image(percent: snapshot.displayRemainingPercent, health: health)
     }
 
     func openConfig() {
@@ -98,18 +101,6 @@ final class UsageViewModel: ObservableObject {
         NSApplication.shared.terminate(nil)
     }
 
-    private func symbol(for health: UsageHealth) -> String {
-        switch health {
-        case .ok:
-            "gauge.with.dots.needle.bottom.50percent"
-        case .warning:
-            "gauge.with.dots.needle.67percent"
-        case .critical:
-            "exclamationmark.triangle"
-        case .unknown:
-            "questionmark.circle"
-        }
-    }
 }
 
 private struct MenuContent: View {
@@ -119,8 +110,14 @@ private struct MenuContent: View {
         VStack(alignment: .leading) {
             Text(viewModel.snapshot.compactSummary())
                 .font(.headline)
-            Text("Window: \(viewModel.snapshot.period.label)")
-            Text("Threads/events: \(viewModel.snapshot.threadCount)")
+            if let rateLimit = viewModel.snapshot.officialRateLimit {
+                Text("Primary: \(Self.percentText(rateLimit.primary?.remainingPercent)) remaining")
+                Text("Secondary: \(Self.percentText(rateLimit.secondary?.remainingPercent)) remaining")
+                Text("Observed: \(rateLimit.observedAt.formatted(date: .abbreviated, time: .standard))")
+            } else {
+                Text("Window: \(viewModel.snapshot.period.label)")
+                Text("Threads/events: \(viewModel.snapshot.threadCount)")
+            }
             Text("Source: \(viewModel.snapshot.source)")
             Text("Updated: \(viewModel.snapshot.updatedAt.formatted(date: .omitted, time: .standard))")
 
@@ -147,5 +144,12 @@ private struct MenuContent: View {
                 viewModel.quit()
             }
         }
+    }
+
+    private static func percentText(_ value: Double?) -> String {
+        guard let value else {
+            return "--%"
+        }
+        return "\(Int(value.rounded()))%"
     }
 }

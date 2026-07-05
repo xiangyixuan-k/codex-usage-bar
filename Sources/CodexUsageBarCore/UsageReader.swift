@@ -23,6 +23,21 @@ public enum UsageReader {
         let startDate = config.period.startDate(now: now, calendar: calendar)
         var warnings: [String] = []
 
+        let rateLimitResult = RateLimitReader.read(config: config, now: now)
+        warnings.append(contentsOf: rateLimitResult.warnings)
+        if let officialRateLimit = rateLimitResult.snapshot {
+            return UsageSnapshot(
+                usedTokens: 0,
+                tokenBudget: 0,
+                threadCount: 0,
+                period: config.period,
+                source: "official rate_limits: \(officialRateLimit.sourceFile)",
+                updatedAt: now,
+                warnings: warnings,
+                officialRateLimit: officialRateLimit
+            )
+        }
+
         let sqliteResult = SQLiteUsageReader.read(config: config, since: startDate)
         warnings.append(contentsOf: sqliteResult.warnings)
 

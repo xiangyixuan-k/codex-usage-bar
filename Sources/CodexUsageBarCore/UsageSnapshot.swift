@@ -15,6 +15,7 @@ public struct UsageSnapshot: Codable, Equatable, Sendable {
     public var source: String
     public var updatedAt: Date
     public var warnings: [String]
+    public var officialRateLimit: OfficialRateLimitSnapshot?
 
     public init(
         usedTokens: Int,
@@ -23,7 +24,8 @@ public struct UsageSnapshot: Codable, Equatable, Sendable {
         period: BudgetPeriod,
         source: String,
         updatedAt: Date = Date(),
-        warnings: [String] = []
+        warnings: [String] = [],
+        officialRateLimit: OfficialRateLimitSnapshot? = nil
     ) {
         self.usedTokens = max(0, usedTokens)
         self.tokenBudget = max(0, tokenBudget)
@@ -32,6 +34,7 @@ public struct UsageSnapshot: Codable, Equatable, Sendable {
         self.source = source
         self.updatedAt = updatedAt
         self.warnings = warnings
+        self.officialRateLimit = officialRateLimit
     }
 
     public var remainingTokens: Int {
@@ -52,8 +55,12 @@ public struct UsageSnapshot: Codable, Equatable, Sendable {
         return max(0, 100 - ((Double(usedTokens) / Double(tokenBudget)) * 100))
     }
 
+    public var displayRemainingPercent: Double? {
+        officialRateLimit?.remainingPercent ?? remainingPercent
+    }
+
     public func health(warningRemainingPercent: Double, criticalRemainingPercent: Double) -> UsageHealth {
-        guard let remainingPercent else {
+        guard let remainingPercent = displayRemainingPercent else {
             return .unknown
         }
         if remainingPercent <= criticalRemainingPercent {
@@ -66,13 +73,18 @@ public struct UsageSnapshot: Codable, Equatable, Sendable {
     }
 
     public func menuBarTitle() -> String {
-        guard let remainingPercent else {
-            return "Codex --"
+        guard let remainingPercent = displayRemainingPercent else {
+            return "--%"
         }
-        return "Codex \(Int(remainingPercent.rounded()))%"
+        return "\(Int(remainingPercent.rounded()))%"
     }
 
     public func compactSummary() -> String {
+        if let officialRateLimit, let remaining = officialRateLimit.remainingPercent {
+            let name = officialRateLimit.limitName ?? officialRateLimit.limitID ?? "Codex"
+            return "\(name): \(Int(remaining.rounded()))% remaining, \(officialRateLimit.resetDescription)"
+        }
+
         let used = Self.format(tokens: usedTokens)
         let budget = tokenBudget > 0 ? Self.format(tokens: tokenBudget) : "not set"
         if let remainingPercent {
