@@ -79,4 +79,8 @@ echo "$OFFICIAL_OUTPUT" | grep '"source" : "Codex response headers: logs_2.sqlit
 echo "$OFFICIAL_OUTPUT" | grep '"usedPercent" : 74' >/dev/null
 echo "$OFFICIAL_OUTPUT" | grep '"usedPercent" : 54' >/dev/null
 
+perl -0pi -e 's/"rateLimitDisplayWindow" : "mostConstrained"/"rateLimitDisplayWindow" : "secondary"/' "$CONFIG_PATH"
+SECONDARY_OUTPUT="$(cd "$ROOT_DIR" && swift run CodexUsageBar --once --json --config "$CONFIG_PATH")"
+echo "$SECONDARY_OUTPUT" | grep '"displayWindow" : "secondary"' >/dev/null
+
 echo "Smoke test passed"

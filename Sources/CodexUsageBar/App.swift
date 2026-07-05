@@ -87,6 +87,12 @@ final class UsageViewModel: ObservableObject {
         batteryImage = BatteryIconRenderer.image(percent: snapshot.displayRemainingPercent, health: health)
     }
 
+    func selectRateLimitWindow(_ window: RateLimitWindow) {
+        config.rateLimitDisplayWindow = window
+        try? ConfigStore.save(config, to: configURL)
+        refresh()
+    }
+
     func openConfig() {
         NSWorkspace.shared.open(configURL)
     }
@@ -113,6 +119,8 @@ private struct MenuContent: View {
             if let rateLimit = viewModel.snapshot.officialRateLimit {
                 Text(rateLimit.limitName ?? "Codex")
                     .foregroundStyle(.secondary)
+                Text("Menu bar shows: \(Self.displayWindowText(viewModel.config.rateLimitDisplayWindow, rateLimit: rateLimit))")
+                    .foregroundStyle(.secondary)
                 Text("\(Self.windowLabel(rateLimit.primary, fallback: "5h window")): \(Self.percentText(rateLimit.primary?.remainingPercent)) remaining")
                 Text("\(Self.windowLabel(rateLimit.secondary, fallback: "7d window")): \(Self.percentText(rateLimit.secondary?.remainingPercent)) remaining")
                 Text(Self.resetText(rateLimit))
@@ -137,6 +145,13 @@ private struct MenuContent: View {
             }
 
             Divider()
+            Menu {
+                displayWindowButton(.primary, title: "5h remaining")
+                displayWindowButton(.secondary, title: "7d remaining")
+                displayWindowButton(.mostConstrained, title: "Lower of 5h / 7d")
+            } label: {
+                Label("Menu Bar Shows", systemImage: "gauge")
+            }
             Button {
                 viewModel.refresh()
             } label: {
@@ -161,11 +176,34 @@ private struct MenuContent: View {
         }
     }
 
+    @ViewBuilder
+    private func displayWindowButton(_ window: RateLimitWindow, title: String) -> some View {
+        Button {
+            viewModel.selectRateLimitWindow(window)
+        } label: {
+            Label(
+                title,
+                systemImage: viewModel.config.rateLimitDisplayWindow == window ? "checkmark.circle.fill" : "circle"
+            )
+        }
+    }
+
     private static func percentText(_ value: Double?) -> String {
         guard let value else {
             return "--%"
         }
         return "\(Int(value.rounded()))%"
+    }
+
+    private static func displayWindowText(_ window: RateLimitWindow, rateLimit: OfficialRateLimitSnapshot) -> String {
+        switch window {
+        case .primary:
+            return windowLabel(rateLimit.primary, fallback: "5h window")
+        case .secondary:
+            return windowLabel(rateLimit.secondary, fallback: "7d window")
+        case .mostConstrained:
+            return "lower of 5h / 7d"
+        }
     }
 
     private static func windowLabel(_ snapshot: RateLimitWindowSnapshot?, fallback: String) -> String {

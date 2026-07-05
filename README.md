@@ -75,6 +75,7 @@ The menu includes:
 
 - the remaining percentage
 - the 5h and 7d windows when Codex provides both
+- choose whether the menu bar battery shows the 5h window, the 7d window, or the lower remaining value
 - refresh now
 - open the settings file
 - open Codex
