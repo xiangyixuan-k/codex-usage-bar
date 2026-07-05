@@ -3,7 +3,7 @@ import CodexUsageBarCore
 
 enum BatteryIconRenderer {
     static func image(percent: Double?, health: UsageHealth) -> NSImage {
-        let size = NSSize(width: 46, height: 18)
+        let size = NSSize(width: 38, height: 17)
         let image = NSImage(size: size)
 
         image.lockFocus()
@@ -11,9 +11,9 @@ enum BatteryIconRenderer {
 
         let outlineColor = NSColor.labelColor
         let fillColor = color(for: health)
-        let bodyRect = NSRect(x: 0.5, y: 2.5, width: 38, height: 13)
-        let terminalRect = NSRect(x: 39, y: 6, width: 5.5, height: 6)
-        let innerRect = bodyRect.insetBy(dx: 3, dy: 3)
+        let bodyRect = NSRect(x: 0.5, y: 2.5, width: 31.5, height: 12)
+        let terminalRect = NSRect(x: 32.5, y: 5.8, width: 4, height: 5.4)
+        let innerRect = bodyRect.insetBy(dx: 2.8, dy: 2.8)
 
         outlineColor.setStroke()
         let bodyPath = NSBezierPath(roundedRect: bodyRect, xRadius: 4, yRadius: 4)
@@ -38,7 +38,7 @@ enum BatteryIconRenderer {
                 NSBezierPath(roundedRect: fillRect, xRadius: 2, yRadius: 2).fill()
             }
 
-            drawText("\(Int(clamped.rounded()))", in: bodyRect)
+            drawText("\(Int(clamped.rounded()))%", in: bodyRect)
         } else {
             drawText(">_", in: bodyRect)
         }
@@ -66,12 +66,12 @@ enum BatteryIconRenderer {
         paragraph.alignment = .center
 
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.monospacedDigitSystemFont(ofSize: 8.2, weight: .semibold),
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 6.8, weight: .bold),
             .foregroundColor: NSColor.labelColor,
             .paragraphStyle: paragraph
         ]
 
-        let textRect = rect.insetBy(dx: 1, dy: 2.4)
+        let textRect = rect.insetBy(dx: 0.8, dy: 2.5)
         text.draw(in: textRect, withAttributes: attributes)
     }
 }

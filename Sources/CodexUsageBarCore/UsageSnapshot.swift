@@ -82,7 +82,8 @@ public struct UsageSnapshot: Codable, Equatable, Sendable {
     public func compactSummary() -> String {
         if let officialRateLimit, let remaining = officialRateLimit.remainingPercent {
             let name = officialRateLimit.limitName ?? officialRateLimit.limitID ?? "Codex"
-            return "\(name): \(Int(remaining.rounded()))% remaining, \(officialRateLimit.resetDescription)"
+            let window = officialRateLimit.displayWindowDescription
+            return "\(name): \(Int(remaining.rounded()))% remaining on \(window), \(officialRateLimit.resetDescription)"
         }
 
         let used = Self.format(tokens: usedTokens)
@@ -102,5 +103,40 @@ public struct UsageSnapshot: Codable, Equatable, Sendable {
             return String(format: "%.1fk", value / 1_000)
         }
         return "\(tokens)"
+    }
+}
+
+extension OfficialRateLimitSnapshot {
+    var displayWindowDescription: String {
+        switch displayWindow {
+        case .primary:
+            return primary?.windowDescription ?? "primary window"
+        case .secondary:
+            return secondary?.windowDescription ?? "secondary window"
+        case .mostConstrained:
+            let windows = [primary, secondary].compactMap { $0 }
+            guard let strictest = windows.min(by: { lhs, rhs in
+                lhs.remainingPercent < rhs.remainingPercent
+            }) else {
+                return "most constrained window"
+            }
+            return strictest.windowDescription
+        }
+    }
+}
+
+extension RateLimitWindowSnapshot {
+    var windowDescription: String {
+        guard let windowMinutes else {
+            return "rate-limit window"
+        }
+
+        if windowMinutes % (24 * 60) == 0 {
+            return "\(windowMinutes / (24 * 60))d window"
+        }
+        if windowMinutes % 60 == 0 {
+            return "\(windowMinutes / 60)h window"
+        }
+        return "\(windowMinutes)m window"
     }
 }

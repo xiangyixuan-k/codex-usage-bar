@@ -64,7 +64,7 @@ public struct UsageConfig: Codable, Equatable, Sendable {
         codexHome: String = "~/.codex",
         tokenBudget: Int = 300_000_000,
         period: BudgetPeriod = .monthly,
-        refreshIntervalSeconds: Double = 60,
+        refreshIntervalSeconds: Double = 30,
         warningRemainingPercent: Double = 25,
         criticalRemainingPercent: Double = 10,
         enableOfficialRateLimitSnapshots: Bool = true,

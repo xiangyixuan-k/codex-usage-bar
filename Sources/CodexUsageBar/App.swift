@@ -108,18 +108,25 @@ private struct MenuContent: View {
 
     var body: some View {
         VStack(alignment: .leading) {
-            Text(viewModel.snapshot.compactSummary())
+            Text(Self.percentText(viewModel.snapshot.displayRemainingPercent) + " remaining")
                 .font(.headline)
             if let rateLimit = viewModel.snapshot.officialRateLimit {
-                Text("Primary: \(Self.percentText(rateLimit.primary?.remainingPercent)) remaining")
-                Text("Secondary: \(Self.percentText(rateLimit.secondary?.remainingPercent)) remaining")
-                Text("Observed: \(rateLimit.observedAt.formatted(date: .abbreviated, time: .standard))")
+                Text(rateLimit.limitName ?? "Codex")
+                    .foregroundStyle(.secondary)
+                Text("\(Self.windowLabel(rateLimit.primary, fallback: "5h window")): \(Self.percentText(rateLimit.primary?.remainingPercent)) remaining")
+                Text("\(Self.windowLabel(rateLimit.secondary, fallback: "7d window")): \(Self.percentText(rateLimit.secondary?.remainingPercent)) remaining")
+                Text(Self.resetText(rateLimit))
+                    .foregroundStyle(.secondary)
             } else {
+                Text("Live Codex limit not found yet")
+                    .foregroundStyle(.secondary)
+                Text("\(viewModel.snapshot.compactSummary())")
                 Text("Window: \(viewModel.snapshot.period.label)")
-                Text("Threads/events: \(viewModel.snapshot.threadCount)")
             }
             Text("Source: \(viewModel.snapshot.source)")
+                .foregroundStyle(.secondary)
             Text("Updated: \(viewModel.snapshot.updatedAt.formatted(date: .omitted, time: .standard))")
+                .foregroundStyle(.secondary)
 
             if !viewModel.snapshot.warnings.isEmpty {
                 Divider()
@@ -130,18 +137,26 @@ private struct MenuContent: View {
             }
 
             Divider()
-            Button("Refresh") {
+            Button {
                 viewModel.refresh()
+            } label: {
+                Label("Refresh Now", systemImage: "arrow.clockwise")
             }
-            Button("Open Config") {
+            Button {
                 viewModel.openConfig()
+            } label: {
+                Label("Open Settings File", systemImage: "gearshape")
             }
-            Button("Open Codex Settings") {
+            Button {
                 viewModel.openCodexSettings()
+            } label: {
+                Label("Open Codex", systemImage: "terminal")
             }
             Divider()
-            Button("Quit") {
+            Button {
                 viewModel.quit()
+            } label: {
+                Label("Quit", systemImage: "xmark.circle")
             }
         }
     }
@@ -151,5 +166,35 @@ private struct MenuContent: View {
             return "--%"
         }
         return "\(Int(value.rounded()))%"
+    }
+
+    private static func windowLabel(_ snapshot: RateLimitWindowSnapshot?, fallback: String) -> String {
+        guard let minutes = snapshot?.windowMinutes else {
+            return fallback
+        }
+
+        if minutes % (24 * 60) == 0 {
+            return "\(minutes / (24 * 60))d window"
+        }
+        if minutes % 60 == 0 {
+            return "\(minutes / 60)h window"
+        }
+        return "\(minutes)m window"
+    }
+
+    private static func resetText(_ rateLimit: OfficialRateLimitSnapshot) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+
+        let primaryReset = rateLimit.primary?.resetsAt.map {
+            "\(windowLabel(rateLimit.primary, fallback: "5h window")) resets \(formatter.localizedString(for: $0, relativeTo: Date()))"
+        }
+        let secondaryReset = rateLimit.secondary?.resetsAt.map {
+            "\(windowLabel(rateLimit.secondary, fallback: "7d window")) resets \(formatter.localizedString(for: $0, relativeTo: Date()))"
+        }
+
+        return [primaryReset, secondaryReset]
+            .compactMap { $0 }
+            .joined(separator: " | ")
     }
 }

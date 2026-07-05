@@ -85,7 +85,11 @@ public struct OfficialRateLimitReadResult: Sendable {
 }
 
 public enum RateLimitReader {
-    public static func read(config: UsageConfig, now: Date = Date()) -> OfficialRateLimitReadResult {
+    public static func read(
+        config: UsageConfig,
+        preferredModel: String? = nil,
+        now: Date = Date()
+    ) -> OfficialRateLimitReadResult {
         guard config.enableOfficialRateLimitSnapshots else {
             return OfficialRateLimitReadResult(snapshot: nil)
         }
@@ -120,6 +124,9 @@ public enum RateLimitReader {
                     guard snapshot.observedAt >= modifiedSince else {
                         continue
                     }
+                    guard RateLimitNameMatcher.matches(snapshot.limitName, preferredModel: preferredModel) else {
+                        continue
+                    }
 
                     if best == nil || snapshot.observedAt > best!.observedAt {
                         best = snapshot
@@ -131,7 +138,11 @@ public enum RateLimitReader {
         }
 
         if best == nil {
-            warnings.append("No official rate-limit payload was found in recent Codex sessions.")
+            if let preferredModel {
+                warnings.append("No session rate-limit payload matched current model \(preferredModel).")
+            } else {
+                warnings.append("No official rate-limit payload was found in recent Codex sessions.")
+            }
         }
 
         return OfficialRateLimitReadResult(snapshot: best, warnings: warnings)

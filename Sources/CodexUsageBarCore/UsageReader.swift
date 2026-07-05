@@ -22,16 +22,40 @@ public enum UsageReader {
     ) -> UsageSnapshot {
         let startDate = config.period.startDate(now: now, calendar: calendar)
         var warnings: [String] = []
+        let preferredModel = CurrentModelReader.read(config: config)
 
-        let rateLimitResult = RateLimitReader.read(config: config, now: now)
-        warnings.append(contentsOf: rateLimitResult.warnings)
-        if let officialRateLimit = rateLimitResult.snapshot {
+        let headerRateLimitResult = CodexHeaderRateLimitReader.read(
+            config: config,
+            preferredModel: preferredModel,
+            now: now
+        )
+        warnings.append(contentsOf: headerRateLimitResult.warnings)
+        if let officialRateLimit = headerRateLimitResult.snapshot {
             return UsageSnapshot(
                 usedTokens: 0,
                 tokenBudget: 0,
                 threadCount: 0,
                 period: config.period,
-                source: "official rate_limits: \(officialRateLimit.sourceFile)",
+                source: "Codex response headers: \(officialRateLimit.sourceFile)",
+                updatedAt: now,
+                warnings: warnings,
+                officialRateLimit: officialRateLimit
+            )
+        }
+
+        let sessionRateLimitResult = RateLimitReader.read(
+            config: config,
+            preferredModel: preferredModel,
+            now: now
+        )
+        warnings.append(contentsOf: sessionRateLimitResult.warnings)
+        if let officialRateLimit = sessionRateLimitResult.snapshot {
+            return UsageSnapshot(
+                usedTokens: 0,
+                tokenBudget: 0,
+                threadCount: 0,
+                period: config.period,
+                source: "Codex session rate_limits: \(officialRateLimit.sourceFile)",
                 updatedAt: now,
                 warnings: warnings,
                 officialRateLimit: officialRateLimit

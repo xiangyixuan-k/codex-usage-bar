@@ -23,7 +23,7 @@ public enum SQLiteUsageReader {
         """
 
         for path in databasePaths {
-            switch runSQLite(path: path, query: query) {
+            switch SQLiteCommand.run(path: path, query: query) {
             case .success(let output):
                 let parsed = parseSQLiteSum(output)
                 usedTokens += parsed.usedTokens
@@ -99,42 +99,5 @@ public enum SQLiteUsageReader {
             return (0, 0)
         }
         return (Int(parts[0]) ?? 0, Int(parts[1]) ?? 0)
-    }
-
-    private enum SQLiteCommandResult {
-        case success(String)
-        case failure(String)
-    }
-
-    private static func runSQLite(path: String, query: String) -> SQLiteCommandResult {
-        let executable = "/usr/bin/sqlite3"
-        guard FileManager.default.fileExists(atPath: executable) else {
-            return .failure("sqlite3 was not found at \(executable).")
-        }
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: executable)
-        process.arguments = ["-readonly", "-separator", "\t", path, query]
-
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        process.standardOutput = outputPipe
-        process.standardError = errorPipe
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-        } catch {
-            return .failure(error.localizedDescription)
-        }
-
-        let output = String(data: outputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-        let errorOutput = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-
-        guard process.terminationStatus == 0 else {
-            return .failure(errorOutput.trimmingCharacters(in: .whitespacesAndNewlines))
-        }
-
-        return .success(output)
     }
 }
