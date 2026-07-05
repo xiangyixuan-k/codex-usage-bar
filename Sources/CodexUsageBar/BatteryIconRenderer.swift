@@ -3,7 +3,7 @@ import CodexUsageBarCore
 
 enum BatteryIconRenderer {
     static func image(percent: Double?, health: UsageHealth) -> NSImage {
-        let size = NSSize(width: 38, height: 17)
+        let size = NSSize(width: 30, height: 16)
         let image = NSImage(size: size)
 
         image.lockFocus()
@@ -11,17 +11,17 @@ enum BatteryIconRenderer {
 
         let outlineColor = NSColor.labelColor
         let fillColor = color(for: health)
-        let bodyRect = NSRect(x: 0.5, y: 2.5, width: 31.5, height: 12)
-        let terminalRect = NSRect(x: 32.5, y: 5.8, width: 4, height: 5.4)
-        let innerRect = bodyRect.insetBy(dx: 2.8, dy: 2.8)
+        let bodyRect = NSRect(x: 0.5, y: 2.5, width: 24.5, height: 11)
+        let terminalRect = NSRect(x: 25.5, y: 5.5, width: 3.2, height: 5)
+        let innerRect = bodyRect.insetBy(dx: 2.4, dy: 2.6)
 
         outlineColor.setStroke()
         let bodyPath = NSBezierPath(roundedRect: bodyRect, xRadius: 4, yRadius: 4)
-        bodyPath.lineWidth = 1.7
+        bodyPath.lineWidth = 1.45
         bodyPath.stroke()
 
         let terminalPath = NSBezierPath(roundedRect: terminalRect, xRadius: 2, yRadius: 2)
-        terminalPath.lineWidth = 1.7
+        terminalPath.lineWidth = 1.45
         terminalPath.stroke()
 
         if let percent {
@@ -66,12 +66,12 @@ enum BatteryIconRenderer {
         paragraph.alignment = .center
 
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.monospacedDigitSystemFont(ofSize: 6.8, weight: .bold),
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 5.8, weight: .bold),
             .foregroundColor: NSColor.labelColor,
             .paragraphStyle: paragraph
         ]
 
-        let textRect = rect.insetBy(dx: 0.8, dy: 2.5)
+        let textRect = rect.insetBy(dx: 0.5, dy: 2.4)
         text.draw(in: textRect, withAttributes: attributes)
     }
 }
