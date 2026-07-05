@@ -63,6 +63,7 @@ final class UsageViewModel: ObservableObject {
 
     let configURL: URL
     private var timer: Timer?
+    private var settingsWindow: NSWindow?
 
     init(options: LaunchOptions) {
         self.configURL = options.configURL
@@ -89,11 +90,45 @@ final class UsageViewModel: ObservableObject {
 
     func selectRateLimitWindow(_ window: RateLimitWindow) {
         config.rateLimitDisplayWindow = window
-        try? ConfigStore.save(config, to: configURL)
+        saveConfig()
         refresh()
     }
 
-    func openConfig() {
+    func selectLanguage(_ language: AppLanguage) {
+        config.language = language
+        saveConfig()
+        settingsWindow?.title = AppStrings(language: language).settings
+        refresh()
+    }
+
+    func openSettings() {
+        if let settingsWindow {
+            settingsWindow.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let text = AppStrings(language: config.language)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 250),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = text.settings
+        window.contentView = NSHostingView(rootView: SettingsView(viewModel: self))
+        window.isReleasedWhenClosed = false
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        settingsWindow = window
+    }
+
+    func closeSettings() {
+        settingsWindow?.close()
+    }
+
+    func openConfigFile() {
         NSWorkspace.shared.open(configURL)
     }
 
@@ -107,33 +142,38 @@ final class UsageViewModel: ObservableObject {
         NSApplication.shared.terminate(nil)
     }
 
+    private func saveConfig() {
+        try? ConfigStore.save(config, to: configURL)
+    }
 }
 
 private struct MenuContent: View {
     @ObservedObject var viewModel: UsageViewModel
 
     var body: some View {
+        let text = AppStrings(language: viewModel.config.language)
+
         VStack(alignment: .leading) {
-            Text(Self.percentText(viewModel.snapshot.displayRemainingPercent) + " remaining")
+            Text("\(Self.percentText(viewModel.snapshot.displayRemainingPercent)) \(text.remaining)")
                 .font(.headline)
             if let rateLimit = viewModel.snapshot.officialRateLimit {
                 Text(rateLimit.limitName ?? "Codex")
                     .foregroundStyle(.secondary)
-                Text("Menu bar shows: \(Self.displayWindowText(viewModel.config.rateLimitDisplayWindow, rateLimit: rateLimit))")
+                Text("\(text.menuBarShows): \(Self.displayWindowText(viewModel.config.rateLimitDisplayWindow, rateLimit: rateLimit, text: text))")
                     .foregroundStyle(.secondary)
-                Text("\(Self.windowLabel(rateLimit.primary, fallback: "5h window")): \(Self.percentText(rateLimit.primary?.remainingPercent)) remaining")
-                Text("\(Self.windowLabel(rateLimit.secondary, fallback: "7d window")): \(Self.percentText(rateLimit.secondary?.remainingPercent)) remaining")
-                Text(Self.resetText(rateLimit))
+                Text("\(Self.windowLabel(rateLimit.primary, fallback: text.fiveHourWindow, text: text)): \(Self.percentText(rateLimit.primary?.remainingPercent)) \(text.remaining)")
+                Text("\(Self.windowLabel(rateLimit.secondary, fallback: text.sevenDayWindow, text: text)): \(Self.percentText(rateLimit.secondary?.remainingPercent)) \(text.remaining)")
+                Text(Self.resetText(rateLimit, text: text))
                     .foregroundStyle(.secondary)
             } else {
-                Text("Live Codex limit not found yet")
+                Text(text.liveLimitNotFound)
                     .foregroundStyle(.secondary)
                 Text("\(viewModel.snapshot.compactSummary())")
-                Text("Window: \(viewModel.snapshot.period.label)")
+                Text("\(text.window): \(viewModel.snapshot.period.label)")
             }
-            Text("Source: \(viewModel.snapshot.source)")
+            Text("\(text.source): \(viewModel.snapshot.source)")
                 .foregroundStyle(.secondary)
-            Text("Updated: \(viewModel.snapshot.updatedAt.formatted(date: .omitted, time: .standard))")
+            Text("\(text.updated): \(viewModel.snapshot.updatedAt.formatted(date: .omitted, time: .standard))")
                 .foregroundStyle(.secondary)
 
             if !viewModel.snapshot.warnings.isEmpty {
@@ -146,32 +186,32 @@ private struct MenuContent: View {
 
             Divider()
             Menu {
-                displayWindowButton(.primary, title: "5h remaining")
-                displayWindowButton(.secondary, title: "7d remaining")
-                displayWindowButton(.mostConstrained, title: "Lower of 5h / 7d")
+                displayWindowButton(.primary, title: text.fiveHourRemaining)
+                displayWindowButton(.secondary, title: text.sevenDayRemaining)
+                displayWindowButton(.mostConstrained, title: text.lowerOfBoth)
             } label: {
-                Label("Menu Bar Shows", systemImage: "gauge")
+                Label(text.menuBarShows, systemImage: "gauge")
             }
             Button {
                 viewModel.refresh()
             } label: {
-                Label("Refresh Now", systemImage: "arrow.clockwise")
+                Label(text.refreshNow, systemImage: "arrow.clockwise")
             }
             Button {
-                viewModel.openConfig()
+                viewModel.openSettings()
             } label: {
-                Label("Open Settings File", systemImage: "gearshape")
+                Label(text.settings, systemImage: "gearshape")
             }
             Button {
                 viewModel.openCodexSettings()
             } label: {
-                Label("Open Codex", systemImage: "terminal")
+                Label(text.openCodex, systemImage: "terminal")
             }
             Divider()
             Button {
                 viewModel.quit()
             } label: {
-                Label("Quit", systemImage: "xmark.circle")
+                Label(text.quit, systemImage: "xmark.circle")
             }
         }
     }
@@ -195,44 +235,154 @@ private struct MenuContent: View {
         return "\(Int(value.rounded()))%"
     }
 
-    private static func displayWindowText(_ window: RateLimitWindow, rateLimit: OfficialRateLimitSnapshot) -> String {
+    private static func displayWindowText(_ window: RateLimitWindow, rateLimit: OfficialRateLimitSnapshot, text: AppStrings) -> String {
         switch window {
         case .primary:
-            return windowLabel(rateLimit.primary, fallback: "5h window")
+            return windowLabel(rateLimit.primary, fallback: text.fiveHourWindow, text: text)
         case .secondary:
-            return windowLabel(rateLimit.secondary, fallback: "7d window")
+            return windowLabel(rateLimit.secondary, fallback: text.sevenDayWindow, text: text)
         case .mostConstrained:
-            return "lower of 5h / 7d"
+            return text.lowerOfBoth
         }
     }
 
-    private static func windowLabel(_ snapshot: RateLimitWindowSnapshot?, fallback: String) -> String {
+    private static func windowLabel(_ snapshot: RateLimitWindowSnapshot?, fallback: String, text: AppStrings) -> String {
         guard let minutes = snapshot?.windowMinutes else {
             return fallback
         }
 
         if minutes % (24 * 60) == 0 {
-            return "\(minutes / (24 * 60))d window"
+            return text.dayWindow(minutes / (24 * 60))
         }
         if minutes % 60 == 0 {
-            return "\(minutes / 60)h window"
+            return text.hourWindow(minutes / 60)
         }
-        return "\(minutes)m window"
+        return text.minuteWindow(minutes)
     }
 
-    private static func resetText(_ rateLimit: OfficialRateLimitSnapshot) -> String {
+    private static func resetText(_ rateLimit: OfficialRateLimitSnapshot, text: AppStrings) -> String {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .short
+        formatter.locale = text.locale
 
         let primaryReset = rateLimit.primary?.resetsAt.map {
-            "\(windowLabel(rateLimit.primary, fallback: "5h window")) resets \(formatter.localizedString(for: $0, relativeTo: Date()))"
+            "\(windowLabel(rateLimit.primary, fallback: text.fiveHourWindow, text: text)) \(text.resets) \(formatter.localizedString(for: $0, relativeTo: Date()))"
         }
         let secondaryReset = rateLimit.secondary?.resetsAt.map {
-            "\(windowLabel(rateLimit.secondary, fallback: "7d window")) resets \(formatter.localizedString(for: $0, relativeTo: Date()))"
+            "\(windowLabel(rateLimit.secondary, fallback: text.sevenDayWindow, text: text)) \(text.resets) \(formatter.localizedString(for: $0, relativeTo: Date()))"
         }
 
         return [primaryReset, secondaryReset]
             .compactMap { $0 }
             .joined(separator: " | ")
+    }
+}
+
+private struct SettingsView: View {
+    @ObservedObject var viewModel: UsageViewModel
+
+    var body: some View {
+        let text = AppStrings(language: viewModel.config.language)
+
+        VStack(alignment: .leading, spacing: 16) {
+            Text(text.settings)
+                .font(.headline)
+
+            Picker(text.language, selection: Binding(
+                get: { viewModel.config.language },
+                set: { viewModel.selectLanguage($0) }
+            )) {
+                ForEach(AppLanguage.allCases, id: \.self) { language in
+                    Text(AppStrings.languageName(language)).tag(language)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Picker(text.menuBarShows, selection: Binding(
+                get: { viewModel.config.rateLimitDisplayWindow },
+                set: { viewModel.selectRateLimitWindow($0) }
+            )) {
+                Text(text.fiveHourRemaining).tag(RateLimitWindow.primary)
+                Text(text.sevenDayRemaining).tag(RateLimitWindow.secondary)
+                Text(text.lowerOfBoth).tag(RateLimitWindow.mostConstrained)
+            }
+
+            Divider()
+
+            HStack {
+                Button {
+                    viewModel.openConfigFile()
+                } label: {
+                    Label(text.openSettingsFile, systemImage: "doc")
+                }
+
+                Spacer()
+
+                Button(text.done) {
+                    viewModel.closeSettings()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(width: 360)
+    }
+}
+
+private struct AppStrings {
+    var appLanguage: AppLanguage
+
+    init(language: AppLanguage) {
+        self.appLanguage = language
+    }
+
+    var locale: Locale {
+        switch appLanguage {
+        case .english:
+            Locale(identifier: "en_US")
+        case .simplifiedChinese:
+            Locale(identifier: "zh_Hans_CN")
+        }
+    }
+
+    var remaining: String { appLanguage == .english ? "remaining" : "剩余" }
+    var settings: String { appLanguage == .english ? "Settings" : "设置" }
+    var language: String { appLanguage == .english ? "Language" : "语言" }
+    var menuBarShows: String { appLanguage == .english ? "Menu Bar Shows" : "菜单栏显示" }
+    var refreshNow: String { appLanguage == .english ? "Refresh Now" : "立即刷新" }
+    var openSettingsFile: String { appLanguage == .english ? "Open Settings File" : "打开设置文件" }
+    var openCodex: String { appLanguage == .english ? "Open Codex" : "打开 Codex" }
+    var quit: String { appLanguage == .english ? "Quit" : "退出" }
+    var done: String { appLanguage == .english ? "Done" : "完成" }
+    var source: String { appLanguage == .english ? "Source" : "来源" }
+    var updated: String { appLanguage == .english ? "Updated" : "更新" }
+    var window: String { appLanguage == .english ? "Window" : "窗口" }
+    var liveLimitNotFound: String { appLanguage == .english ? "Live Codex limit not found yet" : "还没有找到 Codex 实时额度" }
+    var fiveHourRemaining: String { appLanguage == .english ? "5h remaining" : "5 小时剩余" }
+    var sevenDayRemaining: String { appLanguage == .english ? "7d remaining" : "7 天剩余" }
+    var lowerOfBoth: String { appLanguage == .english ? "Lower of 5h / 7d" : "5 小时 / 7 天中更低值" }
+    var fiveHourWindow: String { appLanguage == .english ? "5h window" : "5 小时窗口" }
+    var sevenDayWindow: String { appLanguage == .english ? "7d window" : "7 天窗口" }
+    var resets: String { appLanguage == .english ? "resets" : "重置" }
+
+    func hourWindow(_ value: Int) -> String {
+        appLanguage == .english ? "\(value)h window" : "\(value) 小时窗口"
+    }
+
+    func dayWindow(_ value: Int) -> String {
+        appLanguage == .english ? "\(value)d window" : "\(value) 天窗口"
+    }
+
+    func minuteWindow(_ value: Int) -> String {
+        appLanguage == .english ? "\(value)m window" : "\(value) 分钟窗口"
+    }
+
+    static func languageName(_ language: AppLanguage) -> String {
+        switch language {
+        case .english:
+            "English"
+        case .simplifiedChinese:
+            "简体中文"
+        }
     }
 }

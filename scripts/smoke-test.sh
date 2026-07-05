@@ -51,6 +51,7 @@ cat > "$CONFIG_PATH" <<JSON
   "customStateDatabasePaths" : [],
   "enableOfficialRateLimitSnapshots" : false,
   "includeArchivedSessionsFallback" : false,
+  "language" : "simplifiedChinese",
   "maxRateLimitSnapshotAgeMinutes" : 360,
   "period" : "rolling24h",
   "rateLimitDisplayWindow" : "mostConstrained",

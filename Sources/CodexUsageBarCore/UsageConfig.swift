@@ -33,6 +33,11 @@ public enum BudgetPeriod: String, Codable, CaseIterable, Sendable {
     }
 }
 
+public enum AppLanguage: String, Codable, CaseIterable, Sendable {
+    case english
+    case simplifiedChinese
+}
+
 public struct UsageConfig: Codable, Equatable, Sendable {
     public var codexHome: String
     public var tokenBudget: Int
@@ -43,6 +48,7 @@ public struct UsageConfig: Codable, Equatable, Sendable {
     public var enableOfficialRateLimitSnapshots: Bool
     public var maxRateLimitSnapshotAgeMinutes: Double
     public var rateLimitDisplayWindow: RateLimitWindow
+    public var language: AppLanguage
     public var customStateDatabasePaths: [String]
     public var includeArchivedSessionsFallback: Bool
 
@@ -56,6 +62,7 @@ public struct UsageConfig: Codable, Equatable, Sendable {
         case enableOfficialRateLimitSnapshots
         case maxRateLimitSnapshotAgeMinutes
         case rateLimitDisplayWindow
+        case language
         case customStateDatabasePaths
         case includeArchivedSessionsFallback
     }
@@ -70,6 +77,7 @@ public struct UsageConfig: Codable, Equatable, Sendable {
         enableOfficialRateLimitSnapshots: Bool = true,
         maxRateLimitSnapshotAgeMinutes: Double = 360,
         rateLimitDisplayWindow: RateLimitWindow = .mostConstrained,
+        language: AppLanguage = .english,
         customStateDatabasePaths: [String] = [],
         includeArchivedSessionsFallback: Bool = false
     ) {
@@ -82,6 +90,7 @@ public struct UsageConfig: Codable, Equatable, Sendable {
         self.enableOfficialRateLimitSnapshots = enableOfficialRateLimitSnapshots
         self.maxRateLimitSnapshotAgeMinutes = maxRateLimitSnapshotAgeMinutes
         self.rateLimitDisplayWindow = rateLimitDisplayWindow
+        self.language = language
         self.customStateDatabasePaths = customStateDatabasePaths
         self.includeArchivedSessionsFallback = includeArchivedSessionsFallback
     }
@@ -99,6 +108,7 @@ public struct UsageConfig: Codable, Equatable, Sendable {
         enableOfficialRateLimitSnapshots = try container.decodeIfPresent(Bool.self, forKey: .enableOfficialRateLimitSnapshots) ?? defaults.enableOfficialRateLimitSnapshots
         maxRateLimitSnapshotAgeMinutes = try container.decodeIfPresent(Double.self, forKey: .maxRateLimitSnapshotAgeMinutes) ?? defaults.maxRateLimitSnapshotAgeMinutes
         rateLimitDisplayWindow = try container.decodeIfPresent(RateLimitWindow.self, forKey: .rateLimitDisplayWindow) ?? defaults.rateLimitDisplayWindow
+        language = try container.decodeIfPresent(AppLanguage.self, forKey: .language) ?? defaults.language
         customStateDatabasePaths = try container.decodeIfPresent([String].self, forKey: .customStateDatabasePaths) ?? defaults.customStateDatabasePaths
         includeArchivedSessionsFallback = try container.decodeIfPresent(Bool.self, forKey: .includeArchivedSessionsFallback) ?? defaults.includeArchivedSessionsFallback
     }

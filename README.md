@@ -66,6 +66,11 @@ Download the latest app bundle from:
 
 [github.com/xiangyixuan-k/codex-usage-bar/releases/latest](https://github.com/xiangyixuan-k/codex-usage-bar/releases/latest)
 
+Releases include both:
+
+- `.dmg` for the easiest macOS install flow
+- `.zip` if you prefer a plain archived app bundle
+
 Or build from source:
 
 ```bash
@@ -85,8 +90,11 @@ The menu includes:
   - `5h remaining`
   - `7d remaining`
   - `Lower of 5h / 7d`
+- `Settings` window:
+  - Language: English / Simplified Chinese
+  - Menu bar display mode
 - Refresh now
-- Open settings file
+- Open settings file from Settings
 - Open Codex
 - Quit
 
@@ -107,6 +115,7 @@ Example:
   "customStateDatabasePaths" : [],
   "enableOfficialRateLimitSnapshots" : true,
   "includeArchivedSessionsFallback" : false,
+  "language" : "english",
   "maxRateLimitSnapshotAgeMinutes" : 360,
   "period" : "monthly",
   "rateLimitDisplayWindow" : "mostConstrained",
@@ -148,6 +157,11 @@ swift build
 ./scripts/package-app.sh
 ```
 
+The package script builds:
+
+- `dist/CodexUsageBar-<version>.dmg`
+- `dist/CodexUsageBar-<version>.zip`
+
 ### Limitations
 
 - Live limits update when Codex writes a completed request log.
@@ -183,6 +197,11 @@ Codex 在完成认证请求后，会把 `x-codex-primary-used-percent` 和 `x-co
 
 [github.com/xiangyixuan-k/codex-usage-bar/releases/latest](https://github.com/xiangyixuan-k/codex-usage-bar/releases/latest)
 
+发布包里会同时提供：
+
+- `.dmg`，适合最简单的 macOS 安装流程
+- `.zip`，适合直接解压 app bundle
+
 也可以从源码构建：
 
 ```bash
@@ -202,8 +221,11 @@ open "dist/Codex Usage Bar.app"
   - `5h remaining`
   - `7d remaining`
   - `Lower of 5h / 7d`
+- `Settings / 设置` 窗口：
+  - 语言：English / 简体中文
+  - 菜单栏显示模式
 - 立即刷新
-- 打开设置文件
+- 在设置中打开配置文件
 - 打开 Codex
 - 退出
 
@@ -224,6 +246,7 @@ open "dist/Codex Usage Bar.app"
   "customStateDatabasePaths" : [],
   "enableOfficialRateLimitSnapshots" : true,
   "includeArchivedSessionsFallback" : false,
+  "language" : "english",
   "maxRateLimitSnapshotAgeMinutes" : 360,
   "period" : "monthly",
   "rateLimitDisplayWindow" : "mostConstrained",
@@ -264,6 +287,11 @@ swift run CodexUsageBar --once --budget 2000000 --period monthly
 swift build
 ./scripts/package-app.sh
 ```
+
+打包脚本会生成：
+
+- `dist/CodexUsageBar-<version>.dmg`
+- `dist/CodexUsageBar-<version>.zip`
 
 ### 限制
 

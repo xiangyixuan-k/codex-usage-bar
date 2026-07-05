@@ -4,13 +4,15 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_NAME="Codex Usage Bar"
 BUNDLE_ID="dev.codex.codex-usage-bar"
-VERSION="0.3.2"
+VERSION="0.4.0"
 BUILD_DIR="$ROOT_DIR/.build/release"
 DIST_DIR="$ROOT_DIR/dist"
 APP_DIR="$DIST_DIR/$APP_NAME.app"
 ICON_SOURCE="$ROOT_DIR/Resources/AppIconSource.png"
 ICONSET_DIR="$DIST_DIR/AppIcon.iconset"
 ICON_FILE="$APP_DIR/Contents/Resources/AppIcon.icns"
+ZIP_FILE="$DIST_DIR/CodexUsageBar-$VERSION.zip"
+DMG_FILE="$DIST_DIR/CodexUsageBar-$VERSION.dmg"
 
 cd "$ROOT_DIR"
 swift build -c release
@@ -62,7 +64,7 @@ cat > "$APP_DIR/Contents/Info.plist" <<PLIST
   <key>CFBundleShortVersionString</key>
   <string>$VERSION</string>
   <key>CFBundleVersion</key>
-  <string>5</string>
+  <string>6</string>
   <key>LSMinimumSystemVersion</key>
   <string>13.0</string>
   <key>LSUIElement</key>
@@ -81,4 +83,20 @@ if command -v codesign >/dev/null 2>&1; then
   codesign --force --deep --sign - "$APP_DIR" >/dev/null
 fi
 
+rm -f "$ZIP_FILE" "$DMG_FILE"
+COPYFILE_DISABLE=1 ditto -c -k --keepParent "$APP_DIR" "$ZIP_FILE"
+
+if command -v hdiutil >/dev/null 2>&1; then
+  hdiutil create \
+    -volname "$APP_NAME" \
+    -srcfolder "$APP_DIR" \
+    -ov \
+    -format UDZO \
+    "$DMG_FILE" >/dev/null
+fi
+
 echo "Built $APP_DIR"
+echo "Built $ZIP_FILE"
+if [[ -f "$DMG_FILE" ]]; then
+  echo "Built $DMG_FILE"
+fi
