@@ -1,44 +1,26 @@
 <p align="center">
-  <img src="Resources/AppIconSource.png" width="128" alt="Codex Usage Bar icon">
+  <img src="Resources/AppIconSource.png" width="80" alt="Codex Usage Bar app icon">
 </p>
 
 <h1 align="center">Codex Usage Bar</h1>
 
-<p align="center">
-  A tiny macOS menu bar battery for Codex 5h / 7d remaining limits.
-</p>
+<p align="center"><strong>Codex limits, a glance away.</strong><br>
+A compact macOS menu bar battery for locally recorded 5h / 7d limits.<br>
+用菜单栏电池查看本地记录的 Codex 剩余额度。</p>
 
 <p align="center">
-  <a href="#english">English</a>
-  ·
-  <a href="#中文">中文</a>
+  <a href="https://github.com/xiangyixuan-k/codex-usage-bar/releases/latest"><strong>Download / 下载</strong></a> ·
+  <a href="#install">Install</a> ·
+  <a href="#安装">安装</a> ·
+  <a href="#troubleshooting">Troubleshooting</a> ·
+  <a href="#排障">排障</a>
 </p>
 
-<p align="center">
-  <a href="https://github.com/xiangyixuan-k/codex-usage-bar/releases/latest">
-    <img alt="Latest release" src="https://img.shields.io/github/v/release/xiangyixuan-k/codex-usage-bar?style=flat-square">
-  </a>
-  <a href="https://github.com/xiangyixuan-k/codex-usage-bar/actions/workflows/ci.yml">
-    <img alt="CI" src="https://img.shields.io/github/actions/workflow/status/xiangyixuan-k/codex-usage-bar/ci.yml?branch=main&style=flat-square">
-  </a>
-  <img alt="macOS" src="https://img.shields.io/badge/macOS-13%2B-111111?style=flat-square&logo=apple">
-  <img alt="Swift" src="https://img.shields.io/badge/Swift-6.0-f05138?style=flat-square&logo=swift&logoColor=white">
-  <img alt="Local first" src="https://img.shields.io/badge/privacy-local--first-2ea44f?style=flat-square">
-</p>
+<p align="center"><sub>macOS 13+ · English / 简体中文 · Local data · <a href="LICENSE">MIT</a></sub></p>
 
-<p align="center">
-  <a href="https://github.com/xiangyixuan-k/codex-usage-bar/releases/latest"><b>Download latest release</b></a>
-  ·
-  <a href="#install">Install from source</a>
-  ·
-  <a href="#privacy">Privacy</a>
-</p>
+<p align="center"><a href="#english">English</a> · <a href="#中文">中文</a> · <a href="https://github.com/xiangyixuan-k/codex-usage-bar/issues">Feedback / 反馈</a></p>
 
-<p align="center">
-  <img src="https://github-profile-trophy.vercel.app/?username=xiangyixuan-k&theme=flat&column=6&margin-w=8&no-frame=true" alt="GitHub profile trophies">
-</p>
-
----
+> Check the source as well as the percentage: a local token estimate is not your account quota. **100% with no records does not establish full quota.** 先看来源再看百分比；无记录时的 100% 不代表真实满额。
 
 ## English
 
@@ -54,24 +36,27 @@ It is designed to be boringly simple:
 - Never uploads usage data anywhere
 - Does not read or upload `~/.codex/auth.json`
 
-### Why It Is Accurate
+### Where the number comes from
 
-Codex writes response headers such as `x-codex-primary-used-percent` and `x-codex-secondary-used-percent` into its local request log after authenticated requests. This app reads those local headers first, so a normal Codex login is enough.
+| Priority | Source | What it represents |
+| --- | --- | --- |
+| 1 | Local request logs with `x-codex-primary-used-percent` / `x-codex-secondary-used-percent` | A recorded response-header snapshot |
+| 2 | Model-matched session `rate_limits` | A recorded session snapshot |
+| 3 | SQLite token totals, then JSONL usage | An estimate against your configured `tokenBudget` |
 
-It also checks the current model before using session `rate_limits`, which prevents a Spark snapshot from being shown as a GPT-5.5 limit.
+The app checks snapshot age and model matching before selecting a record. These checks reduce the risk of using a Spark snapshot for a different model; they cannot guarantee that a fresh, compatible record exists. A normal Codex login and a completed request can provide the local logs, but sign-in alone does not guarantee a usable reading.
 
 ### Install
 
-Download the latest app bundle from:
+1. Download the [v0.4.0 DMG](https://github.com/xiangyixuan-k/codex-usage-bar/releases/download/v0.4.0/CodexUsageBar-0.4.0.dmg) or [ZIP](https://github.com/xiangyixuan-k/codex-usage-bar/releases/download/v0.4.0/CodexUsageBar-0.4.0.zip).
+2. Open the DMG or extract the ZIP, then copy `Codex Usage Bar.app` to Applications and open it.
+3. Click the battery in the menu bar. In **Settings**, choose English or Simplified Chinese and the window to display.
 
-[github.com/xiangyixuan-k/codex-usage-bar/releases/latest](https://github.com/xiangyixuan-k/codex-usage-bar/releases/latest)
+Requires macOS 13 or later. If macOS blocks first launch, verify the download source and follow its Privacy & Security prompts.
 
-Releases include both:
+Use Codex normally on this Mac; the app reads existing local records and does not request your login token. If no live snapshot appears, follow [Troubleshooting](#troubleshooting).
 
-- `.dmg` for the easiest macOS install flow
-- `.zip` if you prefer a plain archived app bundle
-
-Or build from source:
+Or build from source with Swift 6.0 or later and Xcode Command Line Tools:
 
 ```bash
 git clone https://github.com/xiangyixuan-k/codex-usage-bar.git
@@ -90,9 +75,11 @@ The menu includes:
   - `5h remaining`
   - `7d remaining`
   - `Lower of 5h / 7d`
+
 - `Settings` window:
   - Language: English / Simplified Chinese
   - Menu bar display mode
+
 - Refresh now
 - Open settings file from Settings
 - Open Codex
@@ -165,9 +152,42 @@ The package script builds:
 ### Limitations
 
 - Live limits update when Codex writes a completed request log.
-- If the value looks stale, send or complete one Codex request and refresh.
+- If the value looks stale, refresh after completing a Codex request you already intended to make; a usable local log is still required.
 - The fallback local token estimate is not an official OpenAI quota meter.
 - If Codex changes its local storage format, the app may need a parser update.
+
+### Troubleshooting
+
+#### The number is stale or suddenly shows 100%. What should I check?
+
+Open the menu and check **Source** and warnings before relying on the percentage.
+
+- `Codex response headers:` means a locally recorded request-header snapshot.
+- `Codex session rate_limits:` means a fallback snapshot from a local session.
+- **Live Codex limit not found yet** means no usable quota snapshot was found; the displayed value may be a local token-budget estimate.
+- `source: none` or `No Codex usage records were found` means no records were found for the selected accounting period. Even a displayed 100% does not establish that your account has full quota or that a reset occurred.
+
+Token estimation compares records the app can find with your configured `tokenBudget`. It is not an official quota and may not include activity on other devices.
+
+#### Why does Updated change while the percentage stays the same?
+
+**Updated** is the time of the app's read, not the timestamp of the quota record. The default refresh interval is 30 seconds; the default maximum snapshot age is 360 minutes. A fresh read can therefore still display an older snapshot. Stale or model-mismatched records can cause a fallback.
+
+1. Compare the same model and window. **Lower of 5h / 7d** uses the lower remaining percentage among available windows.
+2. After completing a Codex request you already intended to make, select **Refresh Now**. Recovery still depends on log availability and format compatibility; avoid repeated requests solely to refresh the display.
+3. In **Settings → Open Settings File**, check that `codexHome` points to the local directory in use and `enableOfficialRateLimitSnapshots` is true. Do not blindly extend snapshot age just to retain an old number.
+4. If the problem continues, retain the source, warnings, app version and macOS version. Increasing `tokenBudget` does not increase your actual quota.
+
+#### How can I report the problem safely?
+
+If you already have a source-build environment, run the existing command from the repository:
+
+```sh
+swift run CodexUsageBar --once --json
+```
+Inspect `source`, `warnings`, `updatedAt`, and, when present, `officialRateLimit.observedAt`. Do not confuse the read time with the quota observation time.
+
+Share only versions, the selected model/window, the symptom and relevant redacted fields. Remove usernames, full local paths and session filenames. Do not upload your Codex directory, raw logs, conversation contents or `auth.json`. Tokens and passwords are not needed.
 
 ---
 
@@ -185,24 +205,27 @@ Codex Usage Bar 是一个很小的 macOS 菜单栏工具，用电池图标显示
 - 不上传任何使用数据
 - 不读取、不上传 `~/.codex/auth.json`
 
-### 为什么更准
+### 数字来自哪里
 
-Codex 在完成认证请求后，会把 `x-codex-primary-used-percent` 和 `x-codex-secondary-used-percent` 这类响应头写进本地请求日志。这个 app 会优先读取这些本地响应头，所以只要你正常登录过 Codex 就能用。
+| 优先级 | 来源 | 含义 |
+| --- | --- | --- |
+| 1 | 本地请求日志里的 `x-codex-primary-used-percent` / `x-codex-secondary-used-percent` | 已记录的响应头额度快照 |
+| 2 | 与当前模型匹配的 session `rate_limits` | 已记录的会话额度快照 |
+| 3 | SQLite token 总量，再尝试 JSONL 使用记录 | 相对于自行配置 `tokenBudget` 的估算 |
 
-它也会先检查当前模型，再使用 session `rate_limits` 作为后备，避免把 Spark 的 100% 快照错显示成 GPT-5.5 的剩余额度。
+应用会检查快照年龄和模型匹配，减少把 Spark 快照用于其他模型的风险；这些检查不能保证一定存在新鲜且兼容的记录。正常登录并完成一次 Codex 请求可能提供本地日志，但仅登录不能保证读数可用。
 
 ### 安装
 
-直接下载最新版：
+1. 下载 [v0.4.0 DMG](https://github.com/xiangyixuan-k/codex-usage-bar/releases/download/v0.4.0/CodexUsageBar-0.4.0.dmg) 或 [ZIP](https://github.com/xiangyixuan-k/codex-usage-bar/releases/download/v0.4.0/CodexUsageBar-0.4.0.zip)。
+2. 打开 DMG 或解压 ZIP，将 `Codex Usage Bar.app` 拖入“应用程序”并打开。
+3. 点击菜单栏电池，在“设置”中选择语言及显示窗口。
 
-[github.com/xiangyixuan-k/codex-usage-bar/releases/latest](https://github.com/xiangyixuan-k/codex-usage-bar/releases/latest)
+要求 macOS 13 或更新版本。如果系统阻止首次打开，请核对下载来源，再按“隐私与安全性”的系统提示操作。
 
-发布包里会同时提供：
+在这台 Mac 上正常使用 Codex 即可让应用读取已有本地记录，不需要向它提供登录令牌。没有实时快照时，参见[排障](#排障)。
 
-- `.dmg`，适合最简单的 macOS 安装流程
-- `.zip`，适合直接解压 app bundle
-
-也可以从源码构建：
+也可以安装 Swift 6.0 或更新版本及 Xcode Command Line Tools 后从源码构建：
 
 ```bash
 git clone https://github.com/xiangyixuan-k/codex-usage-bar.git
@@ -221,9 +244,11 @@ open "dist/Codex Usage Bar.app"
   - `5h remaining`
   - `7d remaining`
   - `Lower of 5h / 7d`
+
 - `Settings / 设置` 窗口：
   - 语言：English / 简体中文
   - 菜单栏显示模式
+
 - 立即刷新
 - 在设置中打开配置文件
 - 打开 Codex
@@ -296,6 +321,41 @@ swift build
 ### 限制
 
 - 实时额度会在 Codex 写入完成请求日志后更新。
-- 如果数字看起来滞后，完成一次 Codex 请求后手动刷新即可。
+- 如果数字看起来滞后，完成一次原本需要的 Codex 请求后手动刷新；仍取决于本地日志是否存在且可解析。
 - 本地 token 估算不是官方 OpenAI 配额表。
 - 如果 Codex 以后修改本地存储格式，这个 app 可能需要更新解析器。
+
+### 排障
+
+#### 数字不更新、突然变成 100%，先看哪里？
+
+打开菜单，先查看“来源”和警告，再看百分比。
+
+- 来源以 `Codex response headers:` 开头：来自本地请求日志里的额度快照。
+- 来源以 `Codex session rate_limits:` 开头：来自本地会话中的后备额度快照。
+- 菜单提示“还没有找到 Codex 实时额度”：当前没有可用的额度快照，显示的可能是本地 token 预算估算。
+- 来源为 `none`，或警告包含 `No Codex usage records were found`：未找到当前统计周期的记录。此时即使显示 100%，也不能据此判断账户余额或额度已重置。
+
+本地 token 估算只反映应用找到的记录与自行设置的 `tokenBudget`，不是官方配额，也不能完整反映其他设备上的使用。
+
+#### “更新”时间很新，为什么数字还是旧的？
+
+菜单中的“更新”是应用本次读取的时间，不是额度日志的产生时间。默认每 30 秒刷新，允许额度快照的最大年龄默认为 360 分钟；因此新刷新可能仍使用较早的快照。过期或模型不匹配的记录可能触发后备读取。
+
+按以下顺序排查：
+
+1. 确认比较的是同一模型和同一额度窗口；“5 小时 / 7 天中更低值”显示可用窗口中更低的剩余百分比。
+2. 完成你本来需要的一次 Codex 请求后，点“立即刷新”。这不保证必然恢复，仍取决于日志是否写入及格式是否兼容；无需为了刷新反复发无意义请求。
+3. 在“设置 → 打开设置文件”中核对 `codexHome` 是否对应正在使用的本地目录，以及 `enableOfficialRateLimitSnapshots` 是否为 true。不要为了让旧数字继续显示而盲目增加快照时限。
+4. 如果仍无数据，保留来源、警告、应用版本和系统版本供排查。单纯提高 `tokenBudget` 不会增加真实额度。
+
+#### 如何提供有用且安全的反馈？
+
+如已具备源码构建环境，可在仓库目录运行已有命令：
+
+```sh
+swift run CodexUsageBar --once --json
+```
+该输出可帮助核对 `source`、`warnings`、`updatedAt`，以及存在时的 `officialRateLimit.observedAt`。不要把 `updatedAt` 当作额度快照时间。
+
+反馈只需说明版本、所选模型/窗口、现象和经过脱敏的相关字段。提交前删除用户名、完整本地路径、会话文件名等个人信息。不要上传完整 Codex 目录、原始日志、会话正文或 `auth.json`；无需提供令牌或密码。
